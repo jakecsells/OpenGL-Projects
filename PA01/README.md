@@ -1,5 +1,5 @@
-A simple example of matrix use in OpenGL
-========================================
+Adding Shader Loader to OpenGL Example
+======================================
 
 Building This Example
 ---------------------
@@ -24,3 +24,14 @@ Mac OS X Things
 *Also std::chrono may or may not work on OS X*
 
 *Should that be the case use gettimeofday*
+
+Things to Note
+--------------
+
+File I/O length is shorter than I think it should be.
+
+Added a correction of length - 1 to compile the shaders
+correctly.
+
+If the shader is not compiling correctly please check
+this offset correction.
