@@ -363,7 +363,7 @@ char* loadShader( const char* filename ) {
 
     //return the loaded temporary file
     input.open(filename); //open the file
-    input.seekg(0, input.end); //go to end of file
+    input.seekg(0, input.end); //go to end 9of file
     length = input.tellg(); //get end of file
     length -= 1; //correction DONT KNOW WHY
     input.seekg(0, input.beg); //go to beginning
