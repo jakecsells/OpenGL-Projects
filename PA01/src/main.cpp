@@ -2,10 +2,11 @@
 #include <GL/glut.h> // doing otherwise causes compiler shouting
 #include <iostream>
 #include <chrono>
-
+#include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp> //Makes passing matrices to shaders easier
+
 
 
 //--Data types
@@ -21,6 +22,8 @@ struct Vertex
 int w = 640, h = 480;// Window size
 GLuint program;// The GLSL program handle
 GLuint vbo_geometry;// VBO handle for our geometry
+const char* VERTEX_SHADER = "../src/shader.vert";
+const char* FRAGMENT_SHADER = "../src/shader.frag";
 
 //uniform locations
 GLint loc_mvpmat;// Location of the modelviewprojection matrix in the shader
@@ -40,6 +43,9 @@ void render();
 void update();
 void reshape(int n_w, int n_h);
 void keyboard(unsigned char key, int x_pos, int y_pos);
+
+//--Function Prototypes
+char* loadShader( const char* filename );
 
 //--Resource management
 bool initialize();
@@ -140,10 +146,14 @@ void update()
 {
     //total time
     static float angle = 0.0;
+    static float rotate = 0.0;
     float dt = getDT();// if you have anything moving, use dt.
 
     angle += dt * M_PI/2; //move through 90 degrees a second
+    rotate += dt * 100; //rotate 180 degrees a second
+
     model = glm::translate( glm::mat4(1.0f), glm::vec3(4.0 * sin(angle), 0.0, 4.0 * cos(angle)));
+    model = glm::rotate( model, rotate, glm::vec3(0,-1,0) );
     // Update the state of the scene
     glutPostRedisplay();//call the display callback
 }
@@ -237,21 +247,10 @@ bool initialize()
     //Shader Sources
     // Put these into files and write a loader in the future
     // Note the added uniform!
-    const char *vs =
-        "attribute vec3 v_position;"
-        "attribute vec3 v_color;"
-        "varying vec3 color;"
-        "uniform mat4 mvpMatrix;"
-        "void main(void){"
-        "   gl_Position = mvpMatrix * vec4(v_position, 1.0);"
-        "   color = v_color;"
-        "}";
 
-    const char *fs =
-        "varying vec3 color;"
-        "void main(void){"
-        "   gl_FragColor = vec4(color.rgb, 1.0);"
-        "}";
+    //Load Vertex Shader
+    const char* vs = loadShader(VERTEX_SHADER);
+    const char* fs = loadShader(FRAGMENT_SHADER);
 
     //compile the shaders
     GLint shader_status;
@@ -354,4 +353,22 @@ float getDT()
     ret = std::chrono::duration_cast< std::chrono::duration<float> >(t2-t1).count();
     t1 = std::chrono::high_resolution_clock::now();
     return ret;
+}  
+
+char* loadShader( const char* filename ) {
+    //declare temporary variables
+    char* temp;
+    std::ifstream input;
+    int length;
+
+    //return the loaded temporary file
+    input.open(filename); //open the file
+    input.seekg(0, input.end); //go to end of file
+    length = input.tellg(); //get end of file
+    length -= 1; //correction DONT KNOW WHY
+    input.seekg(0, input.beg); //go to beginning
+    temp = new char[length]; //allocate memory
+    input.read(temp, length); //read into memory
+    input.close(); //close file
+    return temp; //return
 }
