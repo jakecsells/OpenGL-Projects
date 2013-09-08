@@ -24,6 +24,8 @@ GLuint program;// The GLSL program handle
 GLuint vbo_geometry;// VBO handle for our geometry
 const char* VERTEX_SHADER = "../src/shader.vert";
 const char* FRAGMENT_SHADER = "../src/shader.frag";
+glm::vec3 ROTATE_VECTOR = glm::vec3(0,-1,0);
+bool ROTATE_FLAG = true;
 
 //uniform locations
 GLint loc_mvpmat;// Location of the modelviewprojection matrix in the shader
@@ -42,10 +44,11 @@ glm::mat4 mvp;//premultiplied modelviewprojection
 void render();
 void update();
 void reshape(int n_w, int n_h);
-void keyboard(unsigned char key, int x_pos, int y_pos);
+void keyPress(unsigned char key, int x_pos, int y_pos);
 
 //--Function Prototypes
 char* loadShader( const char* filename );
+void rotateMenu( int selection );
 
 //--Resource management
 bool initialize();
@@ -80,7 +83,7 @@ int main(int argc, char **argv)
     glutDisplayFunc(render);// Called when its time to display
     glutReshapeFunc(reshape);// Called if the window is resized
     glutIdleFunc(update);// Called if there is nothing else to do
-    glutKeyboardFunc(keyboard);// Called if there is keyboard input
+    glutKeyboardFunc(keyPress);// Called if there is keyboard input
 
     // Initialize all of our resources(shaders, geometry)
     bool init = initialize();
@@ -150,10 +153,16 @@ void update()
     float dt = getDT();// if you have anything moving, use dt.
 
     angle += dt * M_PI/2; //move through 90 degrees a second
-    rotate += dt * 100; //rotate 180 degrees a second
+
+    //check if rotating
+    if( ROTATE_FLAG )
+        rotate += dt * 100;
 
     model = glm::translate( glm::mat4(1.0f), glm::vec3(4.0 * sin(angle), 0.0, 4.0 * cos(angle)));
-    model = glm::rotate( model, rotate, glm::vec3(0,-1,0) );
+
+    //rotation control
+    model = glm::rotate( model, rotate, ROTATE_VECTOR );
+
     // Update the state of the scene
     glutPostRedisplay();//call the display callback
 }
@@ -171,12 +180,33 @@ void reshape(int n_w, int n_h)
 
 }
 
-void keyboard(unsigned char key, int x_pos, int y_pos)
+void keyPress(unsigned char key, int x_pos, int y_pos)
 {
-    // Handle keyboard input
+    //keyboard input
     if(key == 27)//ESC
     {
         exit(0);
+    }
+    if(key == 'a')
+    {
+        if( ROTATE_VECTOR.x == 1 )
+            ROTATE_VECTOR.x = -1;
+        else
+            ROTATE_VECTOR.x = 1;
+    }
+    if(key == 's')
+    {
+        if( ROTATE_VECTOR.y == 1 )
+            ROTATE_VECTOR.y = -1;
+        else
+            ROTATE_VECTOR.y = 1;
+    }
+    if(key == 'd')
+    {
+        if( ROTATE_VECTOR.z == 1 )
+            ROTATE_VECTOR.z = -1;
+        else
+            ROTATE_VECTOR.z = 1;
     }
 }
 
@@ -251,6 +281,14 @@ bool initialize()
     //Load Vertex Shader
     const char* vs = loadShader(VERTEX_SHADER);
     const char* fs = loadShader(FRAGMENT_SHADER);
+
+    //Initialize Cube Rotation Menu
+    glutCreateMenu( rotateMenu );
+    glutAddMenuEntry( "Quit", 1);
+    glutAddMenuEntry( "Stop Rotation", 2 );
+    glutAddMenuEntry( "Start Rotation", 3 );
+    glutAddMenuEntry( "Reset Rotation", 4 );
+    glutAttachMenu( GLUT_RIGHT_BUTTON );
 
     //compile the shaders
     GLint shader_status;
@@ -371,4 +409,27 @@ char* loadShader( const char* filename ) {
     input.read(temp, length); //read into memory
     input.close(); //close file
     return temp; //return
+}
+
+void rotateMenu( int selection )
+{
+    switch( selection )
+    {
+        case 1:
+            exit(0);
+            break;
+
+        case 2:
+            ROTATE_FLAG = false;
+            break;
+
+        case 3:
+            ROTATE_FLAG = true;
+            break;
+
+        case 4:
+            ROTATE_VECTOR = glm::vec3(0,-1,0);
+            break;
+    }
+    glutPostRedisplay();
 }
