@@ -22,10 +22,10 @@ struct Vertex
 int w = 640, h = 480;// Window size
 GLuint program;// The GLSL program handle
 GLuint vbo_geometry;// VBO handle for our geometry
-const char* VERTEX_SHADER = "../src/shader.vert";
-const char* FRAGMENT_SHADER = "../src/shader.frag";
-glm::vec3 ROTATE_VECTOR = glm::vec3(0,-1,0);
+const char* VERTEX_SHADER = "./../bin/assets/shader.vert";
+const char* FRAGMENT_SHADER = "./../bin/assets/shader.frag";
 bool ROTATE_FLAG = true;
+float ROTATE_SPEED = 100.0f;
 
 //uniform locations
 GLint loc_mvpmat;// Location of the modelviewprojection matrix in the shader
@@ -44,7 +44,8 @@ glm::mat4 mvp;//premultiplied modelviewprojection
 void render();
 void update();
 void reshape(int n_w, int n_h);
-void keyPress(unsigned char key, int x_pos, int y_pos);
+void keyInput(unsigned char key, int x_pos, int y_pos);
+void mouseInput(int button, int state, int x, int y);
 
 //--Function Prototypes
 char* loadShader( const char* filename );
@@ -83,7 +84,8 @@ int main(int argc, char **argv)
     glutDisplayFunc(render);// Called when its time to display
     glutReshapeFunc(reshape);// Called if the window is resized
     glutIdleFunc(update);// Called if there is nothing else to do
-    glutKeyboardFunc(keyPress);// Called if there is keyboard input
+    glutKeyboardFunc(keyInput);// Called if there is keyboard input
+    glutMouseFunc(mouseInput);// Called if there is mouse input
 
     // Initialize all of our resources(shaders, geometry)
     bool init = initialize();
@@ -156,12 +158,12 @@ void update()
 
     //check if rotating
     if( ROTATE_FLAG )
-        rotate += dt * 100;
+        rotate += dt * ROTATE_SPEED;
 
     model = glm::translate( glm::mat4(1.0f), glm::vec3(4.0 * sin(angle), 0.0, 4.0 * cos(angle)));
 
     //rotation control
-    model = glm::rotate( model, rotate, ROTATE_VECTOR );
+    model = glm::rotate( model, rotate, glm::vec3(0,1,0) );
 
     // Update the state of the scene
     glutPostRedisplay();//call the display callback
@@ -180,34 +182,36 @@ void reshape(int n_w, int n_h)
 
 }
 
-void keyPress(unsigned char key, int x_pos, int y_pos)
+void mouseInput(int button, int state, int x, int y)
+{
+    if( button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN )
+        exit(0);
+    if( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN )
+    {
+        if( ROTATE_FLAG == true )
+            ROTATE_FLAG = false;
+        else
+            ROTATE_FLAG = true;
+    }
+}
+
+void keyInput(unsigned char key, int x_pos, int y_pos)
 {
     //keyboard input
     if(key == 27)//ESC
-    {
         exit(0);
-    }
-    if(key == 'a')
-    {
-        if( ROTATE_VECTOR.x == 1 )
-            ROTATE_VECTOR.x = -1;
-        else
-            ROTATE_VECTOR.x = 1;
-    }
+
+    if(key == 'w')
+        ROTATE_SPEED += 10.0f;
+
     if(key == 's')
-    {
-        if( ROTATE_VECTOR.y == 1 )
-            ROTATE_VECTOR.y = -1;
-        else
-            ROTATE_VECTOR.y = 1;
-    }
-    if(key == 'd')
-    {
-        if( ROTATE_VECTOR.z == 1 )
-            ROTATE_VECTOR.z = -1;
-        else
-            ROTATE_VECTOR.z = 1;
-    }
+        ROTATE_SPEED -= 10.0f;
+
+    if(key == 'a' && ROTATE_SPEED > 0)
+        ROTATE_SPEED *= -1.0f;
+
+    if(key == 'd' && ROTATE_SPEED < 0)
+        ROTATE_SPEED *= -1.0f;
 }
 
 bool initialize()
@@ -287,7 +291,6 @@ bool initialize()
     glutAddMenuEntry( "Quit", 1);
     glutAddMenuEntry( "Stop Rotation", 2 );
     glutAddMenuEntry( "Start Rotation", 3 );
-    glutAddMenuEntry( "Reset Rotation", 4 );
     glutAttachMenu( GLUT_RIGHT_BUTTON );
 
     //compile the shaders
@@ -403,11 +406,11 @@ char* loadShader( const char* filename ) {
     input.open(filename); //open the file
     input.seekg(0, input.end); //go to end 9of file
     length = input.tellg(); //get end of file
-    length -= 1; //correction DONT KNOW WHY
     input.seekg(0, input.beg); //go to beginning
     temp = new char[length]; //allocate memory
     input.read(temp, length); //read into memory
     input.close(); //close file
+    temp[length] = '\n'; //add null terminator
     return temp; //return
 }
 
@@ -425,10 +428,6 @@ void rotateMenu( int selection )
 
         case 3:
             ROTATE_FLAG = true;
-            break;
-
-        case 4:
-            ROTATE_VECTOR = glm::vec3(0,-1,0);
             break;
     }
     glutPostRedisplay();
