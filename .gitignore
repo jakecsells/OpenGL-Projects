@@ -1,2 +1,6 @@
+#temp files
 *~
 *.md~
+
+#bin files
+Matrix
