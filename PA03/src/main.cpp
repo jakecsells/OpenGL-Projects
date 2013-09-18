@@ -22,10 +22,13 @@ struct Vertex
 int w = 640, h = 480;// Window size
 GLuint program;// The GLSL program handle
 GLuint vbo_geometry;// VBO handle for our geometry
-const char* VERTEX_SHADER = "./../bin/assets/shader.vert";
-const char* FRAGMENT_SHADER = "./../bin/assets/shader.frag";
-bool ROTATE_FLAG = true;
-float ROTATE_SPEED = 100.0f;
+const char* VERTEX_SHADER = "../bin/assets/shader.vert";
+const char* FRAGMENT_SHADER = "../bin/assets/shader.frag";
+bool PLANET_ROTATE_FLAG = true;
+bool MOON_ROTATE_FLAG = true;
+float PLANET_ROTATE_SPEED = 100.0f;
+float MOON_ROTATE_SPEED = 50.0f;
+
 
 //uniform locations
 GLint loc_mvpmat;// Location of the modelviewprojection matrix in the shader
@@ -48,6 +51,7 @@ void update();
 void reshape(int n_w, int n_h);
 void keyInput(unsigned char key, int x_pos, int y_pos);
 void mouseInput(int button, int state, int x, int y);
+void arrowInput(int key, int x_pos, int y_pos);
 
 //--Function Prototypes
 char* loadShader( const char* filename );
@@ -87,6 +91,7 @@ int main(int argc, char **argv)
     glutReshapeFunc(reshape);// Called if the window is resized
     glutIdleFunc(update);// Called if there is nothing else to do
     glutKeyboardFunc(keyInput);// Called if there is keyboard input
+    glutSpecialFunc(arrowInput);// Called if there is arrow input
     glutMouseFunc(mouseInput);// Called if there is mouse input
 
     // Initialize all of our resources(shaders, geometry)
@@ -147,7 +152,7 @@ void render()
     glDisableVertexAttribArray(loc_position);
     glDisableVertexAttribArray(loc_color);
 
-    //moon model loading
+    //moon model loading, I will make a complete model loader later
     //upload the matrix to the shader
     glUniformMatrix4fv(loc_mvpmat, 1, GL_FALSE, glm::value_ptr(mvpMoon));
 
@@ -191,23 +196,32 @@ void update()
 
     //planet updating
     anglePlanet += dt * M_PI/2; //move through 90 degrees a second
-    angleMoon += dt * M_PI/2; //have the moon move through 90 degrees a second
+    angleMoon += dt * M_PI; //have the moon move through 180 degrees a second
 
-    //check if rotating
-    if( ROTATE_FLAG )
-        rotatePlanet += dt * ROTATE_SPEED;
-    //
+    //check if the planet is rotating, step rotation
+    if( PLANET_ROTATE_FLAG )
+        rotatePlanet += dt * PLANET_ROTATE_SPEED;
+
+    //check if the moon is rotating, step rotation
+    if( MOON_ROTATE_FLAG )
+        rotateMoon += dt * MOON_ROTATE_SPEED;
+
+    //translate the moon to orbit
     modelPlanet = glm::translate( glm::mat4(1.0f), glm::vec3(4.0 * sin(anglePlanet), 0.0, 4.0 * cos(anglePlanet)));
-    //rotation control
+
+    //translate the moon before the planet rotation
+    glm::mat4 translateMatrix = glm::translate( modelPlanet, glm::vec3( 4.0 * sin(angleMoon), 0.0, 4.0 * cos(angleMoon) ));
+
+    //now we rotate the planet
     modelPlanet = glm::rotate( modelPlanet, rotatePlanet, glm::vec3(0.0,1.0,0.0) );
 
-    //moon updating
-    //scale
-    glm::mat4 rotateMatrix = glm::scale( glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f) );
-    //translate
-    glm::mat4 translateMatrix = glm::translate( modelPlanet, glm::vec3((4.0 * sin(anglePlanet)) + sin(angleMoon), 0.0, (4.0 * cos(anglePlanet)) + cos(angleMoon) ));
+    //scale the moon
+    glm::mat4 scaleMatrix = glm::scale( glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f) );
 
-    modelMoon = translateMatrix * rotateMatrix;
+    //multiply the translate matrix with the scale to get it to scale
+    //and translate correctly
+    modelMoon = translateMatrix * scaleMatrix;
+
     //rotation
     modelMoon = glm::rotate( modelMoon, rotateMoon, glm::vec3(0.0,1.0,0.0) );
     
@@ -227,38 +241,6 @@ void reshape(int n_w, int n_h)
     //See the init function for an explaination
     projection = glm::perspective(45.0f, float(w)/float(h), 0.01f, 100.0f);
 
-}
-
-void mouseInput(int button, int state, int x, int y)
-{
-    if( button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN )
-        exit(0);
-    if( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN )
-    {
-        if( ROTATE_FLAG == true )
-            ROTATE_FLAG = false;
-        else
-            ROTATE_FLAG = true;
-    }
-}
-
-void keyInput(unsigned char key, int x_pos, int y_pos)
-{
-    //keyboard input
-    if(key == 27)//ESC
-        exit(0);
-
-    if(key == 'w')
-        ROTATE_SPEED += 10.0f;
-
-    if(key == 's')
-        ROTATE_SPEED -= 10.0f;
-
-    if(key == 'a' && ROTATE_SPEED > 0)
-        ROTATE_SPEED *= -1.0f;
-
-    if(key == 'd' && ROTATE_SPEED < 0)
-        ROTATE_SPEED *= -1.0f;
 }
 
 bool initialize()
@@ -457,7 +439,7 @@ char* loadShader( const char* filename ) {
     temp = new char[length]; //allocate memory
     input.read(temp, length); //read into memory
     input.close(); //close file
-    temp[length] = '\n'; //add null terminator
+    temp[length] = '\0'; //add null terminator
     return temp; //return
 }
 
@@ -465,17 +447,75 @@ void rotateMenu( int selection )
 {
     switch( selection )
     {
+        //exit program
         case 1:
             exit(0);
             break;
-
+        //stop planet rotation
         case 2:
-            ROTATE_FLAG = false;
+            PLANET_ROTATE_FLAG = false;
             break;
-
+        //start planet rotation
         case 3:
-            ROTATE_FLAG = true;
+            PLANET_ROTATE_FLAG = true;
             break;
     }
     glutPostRedisplay();
+}
+
+void arrowInput(int key, int x_pos, int y_pos)
+{
+    //increase planet rotation speed
+    if( key == GLUT_KEY_UP && PLANET_ROTATE_FLAG )
+        PLANET_ROTATE_SPEED += 10.0;
+
+    //decrease planet rotation speed, stop if at 0.0 rotation
+    if( key== GLUT_KEY_DOWN && PLANET_ROTATE_FLAG && PLANET_ROTATE_SPEED != 0.0 )
+        PLANET_ROTATE_SPEED -= 10.0;
+
+    //change planet rotation counter-clockwise
+    if( key == GLUT_KEY_LEFT && PLANET_ROTATE_FLAG && PLANET_ROTATE_SPEED < 0.0 )
+        PLANET_ROTATE_SPEED *= -1.0;
+
+    //change planet rotation clockwise
+    if( key == GLUT_KEY_RIGHT && PLANET_ROTATE_FLAG && PLANET_ROTATE_SPEED > 0.0 )
+        PLANET_ROTATE_SPEED *= -1.0;
+}
+
+void mouseInput(int button, int state, int x, int y)
+{
+    //menu is connected to right button
+    if( button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN )
+        exit(0);
+    //toggle rotation on left-click
+    if( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN )
+    {
+        if( PLANET_ROTATE_FLAG == true )
+            PLANET_ROTATE_FLAG = false;
+        else
+            PLANET_ROTATE_FLAG = true;
+    }
+}
+
+void keyInput(unsigned char key, int x_pos, int y_pos)
+{
+    //exit program if escape key
+    if(key == 27)
+        exit(0);
+
+    //increase moon rotation speed
+    if( key == 'w' && MOON_ROTATE_FLAG )
+        MOON_ROTATE_SPEED += 10.0;
+
+    //decrease moon rotation speed, stop if at 0.0 rotation
+    if(key == 's' && MOON_ROTATE_FLAG && MOON_ROTATE_SPEED != 0.0 )
+        MOON_ROTATE_SPEED -= 10.0;
+
+    //change moon rotation counter-clockwise
+    if( key == 'a' && MOON_ROTATE_FLAG && MOON_ROTATE_SPEED < 0.0 )
+        MOON_ROTATE_SPEED *= -1.0;
+
+    //change moon rotation clockwise
+    if( key == 'd' && MOON_ROTATE_FLAG && MOON_ROTATE_SPEED > 0.0 )
+        MOON_ROTATE_SPEED *= -1.0;
 }

@@ -1,36 +1,46 @@
-#OpenGL: Menus, Keyboard, and Mouse Interaction
+#OpenGL: Adding a Moon to the Planet
 
 Documentation
 -------------
 
 ###Controls
 
-**Right Mouse Click**--Open simple menu
+**Right Mouse Click** - Open simple menu
 
-**Left Mouse Click**--Reverse rube rotation
+**Left Mouse Click** - Reverse rube rotation
 
-**W Key**--Increase cube rotation speed by 10.0 degrees
+**Up Arrow** - Increase 'planet' rotation speed by 10.0 degrees
 
-**S Key**--Decrease cube rotation speed by 10.0 degrees
+**Down Arrow** - Decrease 'planet' rotation speed by 10.0 degrees
 
-**A Key**--Rotate cube clockwise
+**Left Arrow** - Rotate the 'planet' counter-clockwise
 
-**D Key**--Rotate cube counter-clockwise
+**Right Arrow** -Rotate the 'planet' clockwise
 
-**ESC**--Quit the program
+**W Key** - Increase 'moon' rotation speed by 10.0 degrees
+
+**S Key** - Decrease 'moon' rotation speed by 10.0 degrees
+
+**A Key** - Rotate 'moon' counter-clockwise
+
+**D Key** - Rotate 'moon' clockwise
+
+**ESC** - Quit the program
 
 ###What I did
 
-I used a global called ROTATE_SPEED, which would change
-the speed of the rotation when using the 'w' and 's' keys
-and it will toggle reversing the rotation by multiplying
-the speed by -1.0f. The rotation can change depending
-on the 'a' and 'd' keys.
+Just as before by adding global variables to control the cube
+rotation, I added more globals (uh oh), to keep track of the new
+'moon' model.
+The 'moon' is scaled and translated together. Also, the 'moon' is
+translated before the 'planet' is rotated so the translation does not
+inherit the rotation from the 'planet'.
+
 
 ###Things to Note
 
-Correction of file length minus 1 from the previous lab is
-removed and added with a null terminator.
+The null terminator is now actually a null terminator and not
+a new line character... how embarrassing.
 
 
 Building The Project

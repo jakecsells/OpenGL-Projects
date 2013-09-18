@@ -9,8 +9,8 @@ CC=g++
 LIBS= -lglut -lGLEW -lGL
 CXXFLAGS= -g -Wall -std=c++0x
 
-all: ../bin/Matrix.bin
+all: ../bin/Matrix
 
-../bin/Matrix.bin: ../src/main.cpp
-	$(CC) $(CXXFLAGS) ../src/main.cpp -o ../bin/Matrix.bin $(LIBS)
+../bin/Matrix: ../src/main.cpp
+	$(CC) $(CXXFLAGS) ../src/main.cpp -o ../bin/Matrix $(LIBS)
 
