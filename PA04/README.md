@@ -7,6 +7,10 @@ Documentation
 
 Controls are removed for this lab. It is a show case of the model loader.
 
+So you don't have to go into the source code to change the name of the obj
+file, name your obj file: "test.obj". Or you can change the name of the obj
+file in the global variable **OBJ_FILE**.
+
 ###What I did
 
 I followed the tutorial that was given on the website. Most of the code
