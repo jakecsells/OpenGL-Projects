@@ -1,46 +1,26 @@
-#OpenGL: Adding a Moon to the Planet
+#OpenGL: Creating a Model Loader
 
 Documentation
 -------------
 
 ###Controls
 
-**Right Mouse Click** - Open simple menu
-
-**Left Mouse Click** - Reverse rube rotation
-
-**Up Arrow** - Increase 'planet' rotation speed by 10.0 degrees
-
-**Down Arrow** - Decrease 'planet' rotation speed by 10.0 degrees
-
-**Left Arrow** - Rotate the 'planet' counter-clockwise
-
-**Right Arrow** -Rotate the 'planet' clockwise
-
-**W Key** - Increase 'moon' rotation speed by 10.0 degrees
-
-**S Key** - Decrease 'moon' rotation speed by 10.0 degrees
-
-**A Key** - Rotate 'moon' counter-clockwise
-
-**D Key** - Rotate 'moon' clockwise
-
-**ESC** - Quit the program
+Controls are removed for this lab. It is a show case of the model loader.
 
 ###What I did
 
-Just as before by adding global variables to control the cube
-rotation, I added more globals (uh oh), to keep track of the new
-'moon' model.
-The 'moon' is scaled and translated together. Also, the 'moon' is
-translated before the 'planet' is rotated so the translation does not
-inherit the rotation from the 'planet'.
+I followed the tutorial that was given on the website. Most of the code
+was used as a guide for what I actually implemented. 
 
+The main loops for the loading OBJ files are similar to that of the
+tutorial's. After the loops pulls in the information, it is sent back
+to the Vertex struct. The color is random for each face as well.
 
 ###Things to Note
 
-The null terminator is now actually a null terminator and not
-a new line character... how embarrassing.
+I did not submit my blender model because we were told not to.
+If this is required, please let me know and I can upload it to my
+github repository.
 
 
 Building The Project

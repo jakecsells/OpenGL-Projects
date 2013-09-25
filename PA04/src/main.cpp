@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp> //Makes passing matrices to shaders easier
+#include <vector>
 
 
 
@@ -24,11 +25,11 @@ GLuint program;// The GLSL program handle
 GLuint vbo_geometry;// VBO handle for our geometry
 const char* VERTEX_SHADER = "../bin/assets/shader.vert";
 const char* FRAGMENT_SHADER = "../bin/assets/shader.frag";
-bool PLANET_ROTATE_FLAG = true;
-bool MOON_ROTATE_FLAG = true;
-float PLANET_ROTATE_SPEED = 100.0f;
-float MOON_ROTATE_SPEED = 50.0f;
-
+const char* OBJ_FILE = "../bin/assets/test.obj";
+bool ROTATE_FLAG = true;
+float ROTATE_SPEED = 100.0f;
+int NUM_VERTICIES = 36;
+int GEOMETRY_SIZE = 0;
 
 //uniform locations
 GLint loc_mvpmat;// Location of the modelviewprojection matrix in the shader
@@ -38,12 +39,10 @@ GLint loc_position;
 GLint loc_color;
 
 //transform matrices
-glm::mat4 modelPlanet;//obj->world each object should have its own model matrix
-glm::mat4 modelMoon;//obj->world moon model, which is just a cube
+glm::mat4 model;//obj->world each object should have its own model matrix
 glm::mat4 view;//world->eye
 glm::mat4 projection;//eye->clip
-glm::mat4 mvpPlanet;//premultiplied planet modelviewprojection
-glm::mat4 mvpMoon;//premultiplied moon modelviewprojection
+glm::mat4 mvp;//premultiplied modelviewprojection
 
 //--GLUT Callbacks
 void render();
@@ -51,11 +50,11 @@ void update();
 void reshape(int n_w, int n_h);
 void keyInput(unsigned char key, int x_pos, int y_pos);
 void mouseInput(int button, int state, int x, int y);
-void arrowInput(int key, int x_pos, int y_pos);
 
 //--Function Prototypes
 char* loadShader( const char* filename );
 void rotateMenu( int selection );
+bool loadOBJ( const char* filename, Vertex *&geometry );
 
 //--Resource management
 bool initialize();
@@ -91,7 +90,6 @@ int main(int argc, char **argv)
     glutReshapeFunc(reshape);// Called if the window is resized
     glutIdleFunc(update);// Called if there is nothing else to do
     glutKeyboardFunc(keyInput);// Called if there is keyboard input
-    glutSpecialFunc(arrowInput);// Called if there is arrow input
     glutMouseFunc(mouseInput);// Called if there is mouse input
 
     // Initialize all of our resources(shaders, geometry)
@@ -117,15 +115,13 @@ void render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //premultiply the matrix for this example
-    mvpPlanet = projection * view * modelPlanet;
-    mvpMoon = projection * view * modelMoon;
+    mvp = projection * view * model;
 
     //enable the shader program
     glUseProgram(program);
 
-    //planet model loading
     //upload the matrix to the shader
-    glUniformMatrix4fv(loc_mvpmat, 1, GL_FALSE, glm::value_ptr(mvpPlanet));
+    glUniformMatrix4fv(loc_mvpmat, 1, GL_FALSE, glm::value_ptr(mvp));
 
     //set up the Vertex Buffer Object so it can be drawn
     glEnableVertexAttribArray(loc_position);
@@ -146,36 +142,7 @@ void render()
                            sizeof(Vertex),
                            (void*)offsetof(Vertex,color));
 
-    glDrawArrays(GL_TRIANGLES, 0, 36);//mode, starting index, count
-
-    //clean up
-    glDisableVertexAttribArray(loc_position);
-    glDisableVertexAttribArray(loc_color);
-
-    //moon model loading, I will make a complete model loader later
-    //upload the matrix to the shader
-    glUniformMatrix4fv(loc_mvpmat, 1, GL_FALSE, glm::value_ptr(mvpMoon));
-
-    //set up the Vertex Buffer Object so it can be drawn
-    glEnableVertexAttribArray(loc_position);
-    glEnableVertexAttribArray(loc_color);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_geometry);
-    //set pointers into the vbo for each of the attributes(position and color)
-    glVertexAttribPointer( loc_position,//location of attribute
-                           3,//number of elements
-                           GL_FLOAT,//type
-                           GL_FALSE,//normalized?
-                           sizeof(Vertex),//stride
-                           0);//offset
-
-    glVertexAttribPointer( loc_color,
-                           3,
-                           GL_FLOAT,
-                           GL_FALSE,
-                           sizeof(Vertex),
-                           (void*)offsetof(Vertex,color));
-
-    glDrawArrays(GL_TRIANGLES, 0, 36);//mode, starting index, count
+    glDrawArrays(GL_TRIANGLES, 0, sizeof(Vertex)*GEOMETRY_SIZE);//mode, starting index, count
 
     //clean up
     glDisableVertexAttribArray(loc_position);
@@ -188,43 +155,14 @@ void render()
 void update()
 {
     //total time
-    static float anglePlanet = 0.0;
-    static float rotatePlanet = 0.0;
-    static float angleMoon = 0.0;
-    static float rotateMoon = 0.0;
-    float dt = getDT();// if you have anything moving, use dt.
+    static float rotate = 0.0;
+    //float dt = getDT();// if you have anything moving, use dt.
 
-    //planet updating
-    anglePlanet += dt * M_PI/2; //move through 90 degrees a second
-    angleMoon += dt * M_PI; //have the moon move through 180 degrees a second
+    //check if rotating
+    rotate = 1.0f;
 
-    //check if the planet is rotating, step rotation
-    if( PLANET_ROTATE_FLAG )
-        rotatePlanet += dt * PLANET_ROTATE_SPEED;
-
-    //check if the moon is rotating, step rotation
-    if( MOON_ROTATE_FLAG )
-        rotateMoon += dt * MOON_ROTATE_SPEED;
-
-    //translate the moon to orbit
-    modelPlanet = glm::translate( glm::mat4(1.0f), glm::vec3(4.0 * sin(anglePlanet), 0.0, 4.0 * cos(anglePlanet)));
-
-    //translate the moon before the planet rotation
-    glm::mat4 translateMatrix = glm::translate( modelPlanet, glm::vec3( 4.0 * sin(angleMoon), 0.0, 4.0 * cos(angleMoon) ));
-
-    //now we rotate the planet
-    modelPlanet = glm::rotate( modelPlanet, rotatePlanet, glm::vec3(0.0,1.0,0.0) );
-
-    //scale the moon
-    glm::mat4 scaleMatrix = glm::scale( glm::mat4(1.0f), glm::vec3(0.5f, 0.5f, 0.5f) );
-
-    //multiply the translate matrix with the scale to get it to scale
-    //and translate correctly
-    modelMoon = translateMatrix * scaleMatrix;
-
-    //rotation
-    modelMoon = glm::rotate( modelMoon, rotateMoon, glm::vec3(0.0,1.0,0.0) );
-    
+    //rotation control
+    model = glm::rotate( model, rotate, glm::vec3(0,1,0) );
 
     // Update the state of the scene
     glutPostRedisplay();//call the display callback
@@ -243,64 +181,50 @@ void reshape(int n_w, int n_h)
 
 }
 
+void mouseInput(int button, int state, int x, int y)
+{
+    if( button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN )
+        exit(0);
+    if( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN )
+    {
+        if( ROTATE_FLAG == true )
+            ROTATE_FLAG = false;
+        else
+            ROTATE_FLAG = true;
+    }
+}
+
+void keyInput(unsigned char key, int x_pos, int y_pos)
+{
+    //keyboard input
+    if(key == 27)//ESC
+        exit(0);
+
+    if(key == 'w')
+        ROTATE_SPEED += 10.0f;
+
+    if(key == 's')
+        ROTATE_SPEED -= 10.0f;
+
+    if(key == 'a' && ROTATE_SPEED > 0)
+        ROTATE_SPEED *= -1.0f;
+
+    if(key == 'd' && ROTATE_SPEED < 0)
+        ROTATE_SPEED *= -1.0f;
+}
+
 bool initialize()
 {
     // Initialize basic geometry and shaders for this example
 
-    //this defines a cube, this is why a model loader is nice
-    //you can also do this with a draw elements and indices, try to get that working
-    Vertex geometry[] = { {{-1.0, -1.0, -1.0}, {0.0, 0.0, 0.0}},
-                          {{-1.0, -1.0, 1.0}, {0.0, 0.0, 1.0}},
-                          {{-1.0, 1.0, 1.0}, {0.0, 1.0, 1.0}},
+    // Load any geometry in the OBJ file, load into vertex struct
+    Vertex *geometry;
+    loadOBJ( OBJ_FILE, geometry );
 
-                          {{1.0, 1.0, -1.0}, {1.0, 1.0, 0.0}},
-                          {{-1.0, -1.0, -1.0}, {0.0, 0.0, 0.0}},
-                          {{-1.0, 1.0, -1.0}, {0.0, 1.0, 0.0}},
-                          
-                          {{1.0, -1.0, 1.0}, {1.0, 0.0, 1.0}},
-                          {{-1.0, -1.0, -1.0}, {0.0, 0.0, 0.0}},
-                          {{1.0, -1.0, -1.0}, {1.0, 0.0, 0.0}},
-                          
-                          {{1.0, 1.0, -1.0}, {1.0, 1.0, 0.0}},
-                          {{1.0, -1.0, -1.0}, {1.0, 0.0, 0.0}},
-                          {{-1.0, -1.0, -1.0}, {0.0, 0.0, 0.0}},
-
-                          {{-1.0, -1.0, -1.0}, {0.0, 0.0, 0.0}},
-                          {{-1.0, 1.0, 1.0}, {0.0, 1.0, 1.0}},
-                          {{-1.0, 1.0, -1.0}, {0.0, 1.0, 0.0}},
-
-                          {{1.0, -1.0, 1.0}, {1.0, 0.0, 1.0}},
-                          {{-1.0, -1.0, 1.0}, {0.0, 0.0, 1.0}},
-                          {{-1.0, -1.0, -1.0}, {0.0, 0.0, 0.0}},
-
-                          {{-1.0, 1.0, 1.0}, {0.0, 1.0, 1.0}},
-                          {{-1.0, -1.0, 1.0}, {0.0, 0.0, 1.0}},
-                          {{1.0, -1.0, 1.0}, {1.0, 0.0, 1.0}},
-                          
-                          {{1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}},
-                          {{1.0, -1.0, -1.0}, {1.0, 0.0, 0.0}},
-                          {{1.0, 1.0, -1.0}, {1.0, 1.0, 0.0}},
-
-                          {{1.0, -1.0, -1.0}, {1.0, 0.0, 0.0}},
-                          {{1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}},
-                          {{1.0, -1.0, 1.0}, {1.0, 0.0, 1.0}},
-
-                          {{1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}},
-                          {{1.0, 1.0, -1.0}, {1.0, 1.0, 0.0}},
-                          {{-1.0, 1.0, -1.0}, {0.0, 1.0, 0.0}},
-
-                          {{1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}},
-                          {{-1.0, 1.0, -1.0}, {0.0, 1.0, 0.0}},
-                          {{-1.0, 1.0, 1.0}, {0.0, 1.0, 1.0}},
-
-                          {{1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}},
-                          {{-1.0, 1.0, 1.0}, {0.0, 1.0, 1.0}},
-                          {{1.0, -1.0, 1.0}, {1.0, 0.0, 1.0}}
-                        };
     // Create a Vertex Buffer object to store this vertex info on the GPU
     glGenBuffers(1, &vbo_geometry);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_geometry);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(geometry), geometry, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex)*GEOMETRY_SIZE, geometry, GL_STATIC_DRAW);
 
     //--Geometry done
 
@@ -447,75 +371,67 @@ void rotateMenu( int selection )
 {
     switch( selection )
     {
-        //exit program
         case 1:
             exit(0);
             break;
-        //stop planet rotation
+
         case 2:
-            PLANET_ROTATE_FLAG = false;
+            ROTATE_FLAG = false;
             break;
-        //start planet rotation
+
         case 3:
-            PLANET_ROTATE_FLAG = true;
+            ROTATE_FLAG = true;
             break;
     }
     glutPostRedisplay();
 }
 
-void arrowInput(int key, int x_pos, int y_pos)
+bool loadOBJ( const char* filename, Vertex *&geometry)
 {
-    //increase planet rotation speed
-    if( key == GLUT_KEY_UP && PLANET_ROTATE_FLAG )
-        PLANET_ROTATE_SPEED += 10.0;
-
-    //decrease planet rotation speed, stop if at 0.0 rotation
-    if( key== GLUT_KEY_DOWN && PLANET_ROTATE_FLAG && PLANET_ROTATE_SPEED != 0.0 )
-        PLANET_ROTATE_SPEED -= 10.0;
-
-    //change planet rotation counter-clockwise
-    if( key == GLUT_KEY_LEFT && PLANET_ROTATE_FLAG && PLANET_ROTATE_SPEED < 0.0 )
-        PLANET_ROTATE_SPEED *= -1.0;
-
-    //change planet rotation clockwise
-    if( key == GLUT_KEY_RIGHT && PLANET_ROTATE_FLAG && PLANET_ROTATE_SPEED > 0.0 )
-        PLANET_ROTATE_SPEED *= -1.0;
-}
-
-void mouseInput(int button, int state, int x, int y)
-{
-    //menu is connected to right button
-    if( button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN )
-        exit(0);
-    //toggle rotation on left-click
-    if( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN )
+    std::vector<unsigned int> faces;// faces memory
+    unsigned int trash;// for normal faces, which I didn't load
+    std::vector<glm::vec3> temp_vertices;//
+    FILE * file = fopen(filename, "r");// open file
+    srand((unsigned)time(0));
+    if( file == NULL)// bad file, uh oh
     {
-        if( PLANET_ROTATE_FLAG == true )
-            PLANET_ROTATE_FLAG = false;
-        else
-            PLANET_ROTATE_FLAG = true;
+        printf("Not loading!\n");
+        return false;
     }
-}
-
-void keyInput(unsigned char key, int x_pos, int y_pos)
-{
-    //exit program if escape key
-    if(key == 27)
-        exit(0);
-
-    //increase moon rotation speed
-    if( key == 'w' && MOON_ROTATE_FLAG )
-        MOON_ROTATE_SPEED += 10.0;
-
-    //decrease moon rotation speed, stop if at 0.0 rotation
-    if(key == 's' && MOON_ROTATE_FLAG && MOON_ROTATE_SPEED != 0.0 )
-        MOON_ROTATE_SPEED -= 10.0;
-
-    //change moon rotation counter-clockwise
-    if( key == 'a' && MOON_ROTATE_FLAG && MOON_ROTATE_SPEED < 0.0 )
-        MOON_ROTATE_SPEED *= -1.0;
-
-    //change moon rotation clockwise
-    if( key == 'd' && MOON_ROTATE_FLAG && MOON_ROTATE_SPEED > 0.0 )
-        MOON_ROTATE_SPEED *= -1.0;
+    while(1)// load entire file
+    {
+        char lineHeader[128];
+        //read the first word of the line
+        int res = fscanf(file, "%s", lineHeader);
+        if(res == EOF)
+            break;
+        if( strcmp( lineHeader, "f") == 0 )// faces
+        {
+            unsigned int vertexFaces[3];// temp location for memory
+            fscanf( file, "%d//%d %d//%d %d//%d\n", &vertexFaces[0], &trash,
+                &vertexFaces[1], &trash, 
+                &vertexFaces[2], &trash);
+            for( int i=0; i<3; i++)
+            {
+                faces.push_back(vertexFaces[i]);// send data to faces
+            }
+        }
+        if( strcmp( lineHeader, "v") == 0 )// verticies
+        {
+            glm::vec3 vertex;// create temp vertex
+            fscanf( file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z );// load into temp
+            temp_vertices.push_back(vertex);// push data to main memory
+        }
+    }
+    geometry = new Vertex[ faces.size() ]; //create memory for for geometry
+    for( unsigned int i=0; i<faces.size(); i++ ) //comparing with unsigned int to remove warning
+    {
+        for( int j=0; j<3; j++ ) //load to each x, y, z
+        {
+            geometry[i].position[j] = temp_vertices[faces[i]-1][j];// load position to geometry
+            geometry[i].color[j] = GLfloat((float)rand()/(float)RAND_MAX);// load random color to each vertex
+        }
+    }
+    GEOMETRY_SIZE = faces.size();// save the size for later stuff above
+    return true;// return true, cuz is works
 }
