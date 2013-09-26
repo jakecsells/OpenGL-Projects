@@ -388,6 +388,7 @@ void rotateMenu( int selection )
 
 bool loadOBJ( const char* filename, Vertex *&geometry)
 {
+    int scanGood;// error checking
     std::vector<unsigned int> faces;// faces memory
     unsigned int trash;// for normal faces, which I didn't load
     std::vector<glm::vec3> temp_vertices;//
@@ -408,9 +409,14 @@ bool loadOBJ( const char* filename, Vertex *&geometry)
         if( strcmp( lineHeader, "f") == 0 )// faces
         {
             unsigned int vertexFaces[3];// temp location for memory
-            fscanf( file, "%d//%d %d//%d %d//%d\n", &vertexFaces[0], &trash,
+            scanGood = fscanf( file, "%d//%d %d//%d %d//%d\n", &vertexFaces[0], &trash,
                 &vertexFaces[1], &trash, 
                 &vertexFaces[2], &trash);
+            if( !scanGood )
+            {
+                std::cout << "ERROR: MODEL HAS TEXTURE MAPPING, ABORTING!";
+                return false;
+            }
             for( int i=0; i<3; i++)
             {
                 faces.push_back(vertexFaces[i]);// send data to faces
@@ -419,8 +425,13 @@ bool loadOBJ( const char* filename, Vertex *&geometry)
         if( strcmp( lineHeader, "v") == 0 )// verticies
         {
             glm::vec3 vertex;// create temp vertex
-            fscanf( file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z );// load into temp
+            scanGood = fscanf( file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z );// load into temp
             temp_vertices.push_back(vertex);// push data to main memory
+            if( !scanGood )
+            {
+                std::cout << "ERROR: BAD MODEL DATA, ABORTING!";
+                return false;
+            }
         }
     }
     geometry = new Vertex[ faces.size() ]; //create memory for for geometry
