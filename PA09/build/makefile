@@ -7,7 +7,7 @@ CC=g++
 
 # Compiler flags
 LIBS= -lglut -lGLEW -lGL -lassimp -lIL -lBulletSoftBody -lBulletDynamics -lBulletCollision -lLinearMath
-CXXFLAGS= -g -Wall -std=c++0x -I/usr/local/include/bullet/
+CXXFLAGS= -g -Wall -std=c++0x -I/usr/include/bullet/
 
 all: ../bin/Matrix
 

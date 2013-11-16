@@ -1,50 +1,25 @@
-#OpenGL: Air Hockey
+#OpenGL: Lighting
 
 Documentation
 -------------
 
 ###Controls
 
-**Up Arrow** - Move player away from camera
-
-**Down Arrow** - Move player towards camera
-
-**Left Arrow** - Move player left
-
-**Right Arrow** - Move player right
-
-**Space** - "Jump" the player
-
-**W Key** - Move computer (player2) away from camera
-
-**S Key** - Move computer (player2) towards camera
-
-**A Key** - Move computer (player2) left
-
-**D Key** - Move computer (player2) right
-
-**ESC** - Quit the program
-
-**Mouse Movement** - Move the player in the direction of the mouse
-
-**Touch Screen** - Move the player in the direction of the touch
-
 **RightClick** - Open Menu
+
+**Mene Selection** - Toggle specific lights and views
 
 ###What we did
 
 This project was completed by Jessie Smith, Jake Sells, and Paul Squire.
-We used large models because it went with our theme. We also have the puck 
-as a paddle because we ran out of time and forgot our puck on a different
-computer.
+It was very difficult to complete because we could not output the compile
+errors that occur in our shader files. We had to hard code much of the
+shaders because we had difficulty getting data into the shader.
 
-We have an AI that does whatever it wants. The corners and goal cause the
-puck to fly back into the middle.
+###Things to Note:
 
-###Things to Note
-
-All of this was pretty messed up, but it does work and the physics
-does work pretty well. So that's it.
+Our spotlight will move when the camera is moved for some reason, so it will
+not show on other views than the default. We will need to fix this.
 
 
 Building The Project
