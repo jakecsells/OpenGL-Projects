@@ -114,12 +114,16 @@ btDiscreteDynamicsWorld* dynamicsWorld;
 
 //maze transforms
 float yaw, pitch, roll;
+float pitchDEMO, rollDEMO;
 glm::vec2 oldMousePos;
 
 //game control globals
 bool paused;
 bool followBall;
 bool mouseControl;
+bool gameWon = false;
+float gameWinTime = 0.0;
+
 
 //--GLUT Callbacks
 void render();
@@ -218,7 +222,22 @@ int main(int argc, char **argv) {
 //--Implementations
 void render() {
     //clear the screen
-    glClearColor(0.0, 0.0, 0.2, 1.0);
+    if(toggles[3]==1) {
+        int tmp = rand() % 3;
+        switch(tmp) {
+            case 1:
+                glClearColor(1.0, 0.0, 0.0, 1.0);
+                break;
+            case 2:
+                glClearColor(0.0, 1.0, 0.0, 1.0);
+                break;
+            case 3:
+                glClearColor(0.0, 0.0, 1.0, 1.0);
+                break;
+        }
+    }
+    else
+        glClearColor(0.0, 0.0, 0.2, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     //enable the shader program
@@ -231,7 +250,7 @@ void render() {
     glEnableVertexAttribArray(loc_uv);
 
     // render table
-    if(mode == 1){
+    if(mode == 1 || 2){
         renderOBJ(mazeDEMO);
         renderOBJ(ballDEMO);
     }
@@ -249,10 +268,19 @@ void render() {
     if(mode == 2){
         step = std::chrono::high_resolution_clock::now();
         timeRet = std::chrono::duration_cast< std::chrono::duration<float> >(step-gameTime).count();
-        char buff[20];
+        char buff[40];
         int minutes = (int)(timeRet/60);
         float seconds = timeRet - 60*minutes;
-        sprintf(buff, "Time:   %d:%f\n", minutes, seconds);
+        if(gameWon) {
+            if(timeRet < gameWinTime || gameWinTime == 0.0) {
+                gameWinTime = timeRet;
+            }
+            minutes = (int)(gameWinTime/60);
+            seconds = gameWinTime - 60*minutes;
+            sprintf(buff, "YOU WIN!!! Official Time:   %d:%f\n", minutes, seconds);
+        }
+        else
+            sprintf(buff, "Time:   %d:%f\n", minutes, seconds);
         printText(-0.95f, 0.9f, buff);
     }
 
@@ -308,6 +336,8 @@ void update() {
 
     update(ball01);
     update(maze01);
+    update(ballDEMO);
+    update(mazeDEMO);
 
     // IMPORTANT RAVEMODE THINGS
     counter++;
@@ -341,10 +371,23 @@ void update() {
     btVector3 pos = transform.getOrigin();
 
     if(followBall) {
-        view = glm::lookAt( glm::vec3(0., 1.5, 0. ), //Eye Position
+        view = glm::lookAt( glm::vec3(0.0, 15.0, 0.0 ), //Eye Position
                             glm::vec3(pos.x(), pos.y(), pos.z()), //Focus point
-                            glm::vec3(0.0, 1.0, 0.0)); //y is up
+                            glm::vec3(0.0, 0.0, 1.0)); //y is up
     }
+
+    //YOU WIN FUNCTION
+    if(pos.x() < -4.2 && pos.z() > 4.2) {
+        gameWon = true;
+    }
+
+    btTransform transDEMO;
+    transDEMO.setIdentity();
+    btQuaternion quatDEMO;
+    quatDEMO.setEuler(0.0,pitchDEMO, rollDEMO);
+    transDEMO.setRotation(quatDEMO);
+    transDEMO.setOrigin(btVector3(50.0,0.0,0.0));
+    mazeDEMO.rigidBody->setCenterOfMassTransform(transDEMO);
 
     glutPostRedisplay();//call the display callback
 }
@@ -378,17 +421,31 @@ void keyboard(unsigned char key, int x_pos, int y_pos) {
     {
         exit(0);
     }
-    if(key == 119 && !paused) { // W
-        pitch += 0.01;
+    //for main maze
+    if(key == 119 && !paused && mode == 2) { // W
+        pitch += 0.005;
     }
-    if(key == 115 && !paused) { // A
-        pitch -= 0.01;
+    if(key == 115 && !paused && mode == 2) { // A
+        pitch -= 0.005;
     }
-    if(key == 97 && !paused) { // S
-        roll -= 0.01;
+    if(key == 97 && !paused && mode == 2) { // S
+        roll -= 0.005;
     }
-    if(key == 100 && !paused) { // D
-        roll += 0.01;
+    if(key == 100 && !paused && mode == 2) { // D
+        roll += 0.005;
+    }
+    //for demo maze
+    if(key == 119 && !paused && mode == 1) { // W
+        pitchDEMO += 0.005;
+    }
+    if(key == 115 && !paused && mode == 1) { // A
+        pitchDEMO -= 0.005;
+    }
+    if(key == 97 && !paused && mode == 1) { // S
+        rollDEMO -= 0.005;
+    }
+    if(key == 100 && !paused && mode == 1) { // D
+        rollDEMO += 0.005;
     }
 }
 
@@ -429,26 +486,26 @@ bool initialize() {
     toggles[3] = 0; 
 
     //Create a Vertex Buffer object to store this vertex info on the GPU
-    bool ModelSuccess = loadOBJ("../bin/assets/maze.obj", "../bin/assets/wood.jpg",
+    bool ModelSuccess = loadOBJ("../bin/assets/maze1.obj", "../bin/assets/wood.jpg",
                                          "../bin/assets/neonBoard.jpg", maze01);
     if(ModelSuccess == false){
       cout << "Object Loader failed. Aborting" << endl;
       return 0;
     }
-    ModelSuccess = loadOBJ("../bin/assets/ball.obj", "../bin/assets/marble.jpg",
+    ModelSuccess = loadOBJ("../bin/assets/ball1.obj", "../bin/assets/marble.jpg",
                                         "../bin/assets/neonBall.jpg", ball01);
     if(ModelSuccess == false){
       cout << "Object Loader failed. Aborting" << endl;
       return 0;
     }    
     //Create a Vertex Buffer object to store this vertex info on the GPU
-    ModelSuccess = loadOBJ("../bin/assets/paddle.obj", "../bin/assets/wood.jpg",
+    ModelSuccess = loadOBJ("../bin/assets/maze2.obj", "../bin/assets/wood.jpg",
                                          "../bin/assets/neonBoard.jpg", mazeDEMO);
     if(ModelSuccess == false){
       cout << "Object Loader failed. Aborting" << endl;
       return 0;
     }
-    ModelSuccess = loadOBJ("../bin/assets/ball.obj", "../bin/assets/marble.jpg",
+    ModelSuccess = loadOBJ("../bin/assets/ball1.obj", "../bin/assets/marble.jpg",
                                         "../bin/assets/neonBall.jpg", ballDEMO);
     if(ModelSuccess == false){
       cout << "Object Loader failed. Aborting" << endl;
@@ -571,7 +628,7 @@ bool initialize() {
     //  if you will be having a moving camera the view matrix will need to more dynamic
     //  ...Like you should update it before you render more dynamic 
     //  for this project having them static will be fine
-    view = glm::lookAt( glm::vec3(0, 2.0, -2.0), //Eye Position
+    view = glm::lookAt( glm::vec3(0, 10.0, -10.0), //Eye Position
                         glm::vec3(0.0, 0.0, 0.0), //Focus point
                         glm::vec3(0.0, 1.0, 0.0)); //Positive Y is up
 
@@ -757,23 +814,30 @@ void menu(int selection) {
     case 1: // play game
         mode = 2;
         gameTime = std::chrono::high_resolution_clock::now();
-        // RESET BALL
+        //reset camera position
+        view = glm::lookAt( glm::vec3(0, 10.0, -10.0), //Eye Position
+                            glm::vec3(0.0, 0.0, 0.0), //Focus point
+                            glm::vec3(0.0, 1.0, 0.0)); //Positive Y is up
         break;
 
     case 2: // play demo 
         mode = 1;
+        //set camera to position
+        view = glm::lookAt( glm::vec3(50.0, 10.0, -10.0 ), //Eye Position
+                            glm::vec3(50.0, 0.0, 0.0), //Focus point
+                            glm::vec3(0.0, 1.0, 0.0)); //y is up
         break;
 
     //restart
     case 3:
         //restart ball
         ball01.rigidBody->getMotionState()->getWorldTransform(transform);
-        pos = btVector3(0.45,0.2,-0.42);
+        pos = btVector3(4.5,5.0,-4.2);
         transform.setOrigin(pos);
         ball01.rigidBody->setCenterOfMassTransform(transform);
+        ball01.rigidBody->setLinearVelocity(btVector3(0.0,0.0,0.0));
         gameTime = std::chrono::high_resolution_clock::now();
-        paused = true;
-        dynamicsWorld->setGravity(btVector3(0.0,0.0,0.0));
+        gameWon = false;
         
         //reset board
         pitch = 0.0;
@@ -785,11 +849,9 @@ void menu(int selection) {
     case 4:
         if(!paused) {
             paused = true;
-            dynamicsWorld->setGravity(btVector3(0.0,0.0,0.0));
         }
         else {
             paused = false;
-            dynamicsWorld->setGravity(btVector3(0.0,-1.0,0.0));
         }
         break;
     // toggle distant
@@ -818,9 +880,9 @@ void menu(int selection) {
 
     //camera: front view
     case 8:
-        x=1.;
-        y=-2.;
-        z=0.;
+        x=0.0;
+        y=10;
+        z=-10;
         view = glm::lookAt( glm::vec3(x, y, z ), //Eye Position
                             glm::vec3(0.0, 0.0, 0.0), //Focus point
                             glm::vec3(0.0, 1.0, 0.0)); //y is up
@@ -829,12 +891,12 @@ void menu(int selection) {
 
     //camera: top view
     case 9:
-        x=0.;
-        y=1.5;
-        z=0.;
+        x=0.0;
+        y=15.0;
+        z=0.0;
         view = glm::lookAt( glm::vec3(x, y, z ), //Eye Position
                             glm::vec3(0.0, 0.0, 0.0), //Focus point
-                            glm::vec3(0.0, 1.0, 0.0)); //y is up
+                            glm::vec3(0.0, 0.0, 1.0)); //y is up
         render();
         followBall = false;
         break;
@@ -842,8 +904,8 @@ void menu(int selection) {
     //camera: follow the ball
     case 10:
         x=0.0;
-        y=1.5;
-        z=0.;
+        y=15.0;
+        z=0.0;
         view = glm::lookAt( glm::vec3(x, y, z ), //Eye Position
                             glm::vec3(0.0, 0.0, 0.0), //Focus point
                             glm::vec3(0.0, 1.0, 0.0)); //y is up
@@ -912,7 +974,7 @@ void initPhysics() {
 
     dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher,broadphase,solver,collisionConfiguration);
 
-    dynamicsWorld->setGravity(btVector3(0,-1.0,0));
+    dynamicsWorld->setGravity(btVector3(0,-5.0,0));
     // dynamicsWorld->setForceUpdateAllAabbs(false);
 
     //maze01
@@ -923,13 +985,32 @@ void initPhysics() {
     // maze01.rigidBody->setActivationState(DISABLE_DEACTIVATION);
     dynamicsWorld->addRigidBody(maze01.rigidBody);
 
+    //maze02
+    btCollisionShape* mazeDEMOShape = new btBvhTriangleMeshShape(mazeDEMO.btMesh, true);
+    btDefaultMotionState* mazeDEMOMotionShape = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(50,0.0,0.0)));
+    btRigidBody::btRigidBodyConstructionInfo mazeDEMORigidBodyCI(0,mazeDEMOMotionShape,mazeDEMOShape,btVector3(0,0,0));
+    mazeDEMO.rigidBody = new btRigidBody(mazeDEMORigidBodyCI);
+    // maze01.rigidBody->setActivationState(DISABLE_DEACTIVATION);
+    dynamicsWorld->addRigidBody(mazeDEMO.rigidBody);
+
+
     //Ball01
-    btCollisionShape* ball01Shape = new btSphereShape(0.011);   
-    btDefaultMotionState* ball01MotionState = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0.45,0.2,-0.42 )));
+    btCollisionShape* ball01Shape = new btSphereShape(0.15);   
+    btDefaultMotionState* ball01MotionState = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(4.5,5.0,-4.2 )));
     btRigidBody::btRigidBodyConstructionInfo ball01RigidBodyCI(2,ball01MotionState,ball01Shape,btVector3(0,0,0) );
     ball01RigidBodyCI.m_friction = 0.01;
     ball01RigidBodyCI.m_restitution = 1.0;
     ball01.rigidBody = new btRigidBody(ball01RigidBodyCI);
     ball01.rigidBody->setActivationState(DISABLE_DEACTIVATION);
     dynamicsWorld->addRigidBody(ball01.rigidBody);
+
+    //ballDEMO
+    btCollisionShape* ballDEMOShape = new btSphereShape(0.15);   
+    btDefaultMotionState* ballDEMOMotionState = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(50.0,5.0,0.0)));
+    btRigidBody::btRigidBodyConstructionInfo ballDEMORigidBodyCI(2,ballDEMOMotionState,ballDEMOShape,btVector3(0,0,0) );
+    ballDEMORigidBodyCI.m_friction = 0.01;
+    ballDEMORigidBodyCI.m_restitution = 1.0;
+    ballDEMO.rigidBody = new btRigidBody(ballDEMORigidBodyCI);
+    ballDEMO.rigidBody->setActivationState(DISABLE_DEACTIVATION);
+    dynamicsWorld->addRigidBody(ballDEMO.rigidBody);
 }

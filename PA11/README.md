@@ -37,9 +37,15 @@ We were able to get a maze with a bottom and holes and a ball to roll around in 
 This is all working, but at some points the ball will fall through, which we will
 try to fix by the time the demo comes by.
 
+###What we Did
+
+We increased the model mesh scale in time for the demo, because it seemed that increasing
+the size would make the collision more stable. We used a 3d triangle mesh with bullet to make the model operate correctly. We added some extra credit things, like RAVE MODE and mouse control.
+Overall, the project was a success.
+
 ###Things to Note:
 
-The ball will occasionally fall through the bottom.
+The ball will occasionally fall through the bottom. The board can flip over entirely if you want it to. This is considered an additional degree of freedom for the player.
 
 Building The Project
 --------------------
